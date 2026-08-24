@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <title>PolyGym - Registro de Alumnos</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+      <!-- CryptoJS ya no es necesario: la firma del QR se genera en el servidor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        :root {
+            --guinda-ipn: #682444;
+            --guinda-hover: #4a1a31;
+            --blanco-nieve: #ffffff;
+            --gris-fondo: #f8f9fa;
+            --texto-principal: #2d3436;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--gris-fondo);
+            color: var(--texto-principal);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .contenedor {
+            background-color: var(--blanco-nieve);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--guinda-ipn);
+            margin-bottom: 5px;
+        }
+
+        p.subtitulo {
+            text-align: center;
+            font-size: 14px;
+            color: #636e72;
+            margin-bottom: 25px;
+        }
+
+        .grupo-input {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        input[type="text"], select, input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dfe6e9;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        input[type="file"] {
+            padding: 8px;
+            background-color: #f1f2f6;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--guinda-ipn);
+            color: var(--blanco-nieve);
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            background-color: var(--guinda-hover);
+        }
+
+        button:disabled {
+            background-color: #b2bec3;
+            cursor: not-allowed;
+        }
+
+        #qr-container {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px dashed #dfe6e9;
+        }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin: 15px 0;
+        }
+    </style>
+    <style>
+        .credencial {
+            width: 320px;
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            border: 2px solid #7a1c31; /* Color Guinda IPN */
+            margin: 0 auto;
+        }
+        .credencial-header {
+            background-color: #7a1c31; 
+            color: #ffffff;
+            padding: 15px 0;
+        }
+        .credencial-header h2 { margin: 0; font-size: 24px; font-weight: bold; }
+        .credencial-header h2 { color: #ffffff !important; }
+        .credencial-header p { margin: 5px 0 0; font-size: 13px; opacity: 0.9; }
+        .credencial-body { padding: 20px; color: #333; }
+        .credencial-body h3 { margin: 0 0 10px; color: #7a1c31; font-size: 20px; text-transform: uppercase;}
+        .credencial-body p { margin: 5px 0; font-size: 15px; }
+        .qr-container {
+            margin-top: 15px;
+            padding: 10px;
+            background: #fff;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .credencial-footer {
+            background-color: #f1f1f1;
+            padding: 10px;
+            font-size: 11px;
+            color: #555;
+            border-top: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="contenedor" id="formulario-container">
+        <h2>PolyGym IPN</h2>
+        <p class="subtitulo">Registro de Alumnos y Expediente Médico</p>
+
+        <div class="grupo-input">
+            <label>Número de Boleta</label>
+            <input type="text" id="boleta" placeholder="Ej. 2024601234">
+        </div>
+
+        <div class="grupo-input">
+            <label>Nombre Completo</label>
+            <input type="text" id="nombre" placeholder="Nombre empezando por apellidos">
+        </div>
+
+        <div class="grupo-input">
+            <label>Carrera</label>
+            <input type="text" id="carrera" placeholder="Ej. ICE">
+        </div>
+        
+        <!-- CAMBIO: AGREGADO EL INPUT DE NÚMERO DE EMERGENCIA CON ID 'Numero' -->
+        <div class="grupo-input">
+            <label>Número de emergencia</label>
+            <input type="text" id="Numero" placeholder="Ej. 5586007518">
+        </div>
+
+        <div class="grupo-input">
+            <label>Horario Asignado</label>
+            <select id="horario">
+                <option value="">Selecciona un horario</option>
+                <option value="09:30 - 11:00">09:30 - 11:00</option>
+                <option value="11:00 - 12:30">11:00 - 12:30</option>
+                <option value="12:30 - 14:00">12:30 - 14:00</option>
+                <option value="14:00 - 15:30">14:00 - 15:30</option>
+                <option value="15:30 - 17:00">15:30 - 17:00</option>
+                <option value="17:00 - 18:30">17:00 - 18:30</option>
+                <option value="18:30 - 19:00 (Cierre)">18:30 - 19:00 (Cierre)</option>
+            </select>
+        </div>
+
+        <div class="grupo-input">
+            <label>Fotografía de Identidad (.jpg, .png)</label>
+            <input type="file" id="foto" accept="image/jpeg, image/png">
+        </div>
+
+        <div class="grupo-input">
+            <label>Dictamen Médico (.pdf, .jpg)</label>
+            <input type="file" id="certificado" accept="application/pdf, image/jpeg, image/png">
+        </div>
+
+        <button id="btn-registrar" onclick="procesarRegistro()">✅ Completar Registro</button>
+
+        <div id="qr-container">
+            <h3 style="color: #2ecc71;">¡Registro Exitoso!</h3>
+            <p style="font-size: 13px;">Toma captura de pantalla a tu código de acceso. Es intransferible.</p>
+            <div id="qrcode"></div>
+            <button onclick="location.reload()" style="background-color: #0984e3;">Registrar otro alumno</button>
+        </div>
+    </div>
+        <!-- CONTENEDOR DE LA CREDENCIAL -->
+<div id="contenedor_credencial" style="display: none; text-align: center; margin-top: 20px;">
+    
+    <div id="tarjeta_polygym" class="credencial">
+        <div class="credencial-header">
+            <h2>PolyGym IPN</h2>
+            <p>Pase de Acceso Seguro</p>
+        </div>
+        <div class="credencial-body">
+            <h3 id="credencial_nombre">Nombre del Alumno</h3>
+            <p>Boleta: <span id="credencial_boleta" style="font-weight: bold;">---</span></p>
+            <p>Horario: <strong id="credencial_horario" style="color: #7a1c31;">---</strong></p>
+            
+            <div class="qr-container">
+                <!-- El script inyectará la imagen QR dentro de este div visible -->
+                <div id="mi_qr_canvas"></div> 
+            </div>
+            
+        </div>
+        <div class="credencial-footer">
+            <p>IPN - Instituto Politécnico Nacional</p>
+        </div>
+    </div>
+    
+    <br>
+    <button onclick="descargarCredencial()" style="padding: 10px 20px; background-color: #27AE60; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px;">
+        ⬇️ Descargar Credencial
+    </button>
+</div>
+
+    <script>
+        // 1. CREDENCIALES DE SUPABASE
+        const SUPABASE_URL = 'https://adcbymcisaefkshctxzf.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_LeJbAunpCFfHHUCEJXOO1w_QWKqQ5Lt';
+        
+        // CREAMOS EL CLIENTE CON UN NOMBRE ÚNICO ('instanciaSupabase') PARA EVITAR CONFLICTOS
+        // Si la consola dice "has already been declared", borra la que sobra.
+        // Usaremos un nombre diferente para la instancia y la librería.
+        const instanciaSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 2. SEGURIDAD DEL QR: la firma ya NO se calcula aquí.
+        // Se le pide al servidor (Supabase) que la genere -- el secreto
+        // nunca viaja al navegador, así nadie puede verlo ni copiarlo.
+        async function generarFirmaSegura(boleta) {
+            const { data, error } = await instanciaSupabase.rpc('generar_firma_qr', { boleta_input: boleta });
+            if (error) throw error;
+            return data; // el servidor ya regresa "boleta|firma" listo
+        }
+
+        // 3. FUNCIÓN PRINCIPAL DE REGISTRO
+        async function procesarRegistro() {
+            const boleta = document.getElementById('boleta').value.trim();
+            const nombre = document.getElementById('nombre').value.trim();
+            const carrera = document.getElementById('carrera').value.trim();
+            const numero = document.getElementById('Numero').value.trim(); // <-- Asegúrate de tener este input en HTML
+            const horario = document.getElementById('horario').value;
+            const archivoFoto = document.getElementById('foto').files[0];
+            const archivoCertificado = document.getElementById('certificado').files[0];
+            const boton = document.getElementById('btn-registrar');
+
+            // Validaciones: Todos los campos deben estar llenos
+            if (!boleta || !nombre || !carrera || !numero || !horario || !archivoFoto || !archivoCertificado) {
+                alert("Por favor, completa todos los campos (incluyendo el número de emergencia y horario) y sube tus archivos.");
+                return;
+            }
+
+            boton.innerText = "⏳ Subiendo archivos a la nube...";
+            boton.disabled = true;
+
+            try {
+                const extFoto = archivoFoto.name.split('.').pop();
+                const nombreFoto = `${boleta}_foto.${extFoto}`;
+                
+                const extCert = archivoCertificado.name.split('.').pop();
+                const nombreCert = `${boleta}_dictamen.${extCert}`;
+
+                // --- PASO 1: SUBIR FOTO ---
+                // Usamos 'instanciaSupabase.storage.from()'
+                const { data: dataFoto, error: errorFoto } = await instanciaSupabase.storage
+                    .from('fotos_alumnos')
+                    .upload(nombreFoto, archivoFoto, { upsert: true });
+                if (errorFoto) throw errorFoto;
+                // Ya NO usamos getPublicUrl: el bucket es privado, ese link no serviría.
+                // Guardamos solo la RUTA del archivo; el panel admin genera un link
+                // temporal (firmado) cuando lo necesite ver.
+
+                // --- PASO 2: SUBIR CERTIFICADO ---
+                boton.innerText = "⏳ Subiendo dictamen...";
+                const { data: dataCert, error: errorCert } = await instanciaSupabase.storage
+                    .from('certificados')
+                    .upload(nombreCert, archivoCertificado, { upsert: true });
+                if (errorCert) throw errorCert;
+
+                // --- PASO 3: GUARDAR EN LA BASE DE DATOS (TABLA alumnos) ---
+                boton.innerText = "⏳ Guardando registro...";
+                const datosInsertar = {
+                    boleta: boleta,
+                    nombre: nombre,
+                    carrera: carrera,
+                    telefono_emergencia: numero,
+                    horario: horario,
+                    foto_url: nombreFoto,
+                    certificado_url: nombreCert,
+                    estado: "PENDIENTE" //
+                };
+
+                // USAMOS .from() PARA INSERTAR EN LA TABLA
+                const { error: errorDB } = await instanciaSupabase.from('alumnos').insert([datosInsertar]);
+                if (errorDB) throw errorDB;
+
+                // Si todo sale bien, generar QR
+                await mostrarQR(boleta);
+                await generarYDescargarCredencial(nombre, boleta, horario);
+
+            } catch (error) {
+                console.error("Error detallado:", error);
+                // El error "Cannot read properties of undefined (reading 'from')"
+                // sucede si 'instanciaSupabase' o 'instanciaSupabase.storage' son undefined.
+                // Asegúrate de tener copiado este script completo y de que no hay restos antiguos.
+                alert("Ocurrió un error al subir los datos: " + error.message);
+                boton.innerText = "✅ Completar Registro";
+                boton.disabled = false;
+            }
+        }
+
+        async function mostrarQR(boleta) {
+        document.querySelectorAll('.grupo-input').forEach(el => el.style.display = 'none');
+        document.getElementById('btn-registrar').style.display = 'none';
+        document.getElementById('qr-container').style.display = 'block';
+
+       const datosQR = await generarFirmaSegura(boleta);
+
+        // Generamos el QR en un contenedor temporal invisible
+        const temp = document.createElement('div');
+        temp.style.display = 'none';
+        document.body.appendChild(temp);
+
+        new QRCode(temp, {
+        text: datosQR,
+        width: 150,
+        height: 150,
+        colorDark: "#000000",
+        colorLight: "#ffffff"
+    });
+
+    // Le damos un pequeño margen a la librería para que dibuje el canvas
+        setTimeout(() => {
+        const canvasTemp = temp.querySelector('canvas');
+        const dataURL = canvasTemp ? canvasTemp.toDataURL('image/png') : null;
+        document.body.removeChild(temp);
+
+        if (!dataURL) {
+            console.error("No se pudo generar el QR como imagen.");
+            return;
+        }
+
+        // Guardamos el dataURL globalmente para usarlo en la credencial
+        window.__qrDataURL = dataURL;
+
+        // Mostrar el QR en el panel de "¡Registro Exitoso!" (antes se quedaba vacío)
+        const contenedorVisible = document.getElementById("qrcode");
+        contenedorVisible.innerHTML = '';
+        const imgQRVisible = document.createElement('img');
+        imgQRVisible.src = dataURL;
+        imgQRVisible.width = 150;
+        imgQRVisible.height = 150;
+        contenedorVisible.appendChild(imgQRVisible);
+
+        // Mostrar el QR también dentro de la credencial descargable
+        const contenedor = document.getElementById("mi_qr_canvas");
+        contenedor.innerHTML = '';
+        const imgQR = document.createElement('img');
+        imgQR.src = dataURL;
+        imgQR.width = 150;
+        imgQR.height = 150;
+        contenedor.appendChild(imgQR);
+      }, 50);
+}
+
+        // Función 1: Llena los datos visuales
+        async function generarYDescargarCredencial(nombre_alumno, boleta_alumno, horario_alumno) {
+        document.getElementById("credencial_nombre").innerText = nombre_alumno;
+        document.getElementById("credencial_boleta").innerText = boleta_alumno;
+        document.getElementById("credencial_horario").innerText = horario_alumno;
+
+        document.getElementById("contenedor_credencial").style.display = "block";
+
+        // Esperamos a que el dataURL del QR ya exista (lo genera mostrarQR)
+        let intentos = 0;
+        while (!window.__qrDataURL && intentos < 40) {
+        await new Promise(r => setTimeout(r, 50));
+        intentos++;
+    }
+
+    await new Promise(r => setTimeout(r, 150)); // respiro para el layout
+    descargarCredencial();
+}
+
+        // Función 2: Toma la captura final
+        function descargarCredencial() {
+            const tarjeta = document.getElementById("tarjeta_polygym");
+            
+            html2canvas(tarjeta, { 
+                scale: 3, 
+                useCORS: true, 
+                allowTaint: true,
+                backgroundColor: "#ffffff",
+                imageTimeout: 0
+            }).then(canvas => {
+                let enlace = document.createElement('a');
+                enlace.download = `PolyGym_Acceso_${document.getElementById("credencial_boleta").innerText}.png`;
+                enlace.href = canvas.toDataURL("image/png");
+                enlace.click(); 
+            });
+        }
+
+        
+
+    </script>
+</body>
+</html>
