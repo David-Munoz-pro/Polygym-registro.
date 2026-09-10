@@ -168,11 +168,12 @@
     </section>
 
     <section class="seccion" id="seccion-padron">
+      <div id="resumen-cupos" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px;"></div>
       <div class="toolbar">
         <input type="text" id="buscador" placeholder="Buscar por boleta o nombre..." oninput="filtrarAlumnos()">
       </div>
       <table>
-        <thead><tr><th>Boleta</th><th>Nombre</th><th>Carrera</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Boleta</th><th>Nombre</th><th>Carrera</th><th>Horario</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody id="tabla-alumnos"></tbody>
       </table>
     </section>
@@ -354,6 +355,20 @@
     if (error) { alert('Error al cargar alumnos: ' + error.message); return; }
     alumnosCache = data || [];
     pintarTablaAlumnos(alumnosCache);
+    cargarResumenCupos();
+  }
+
+  async function cargarResumenCupos() {
+    const { data, error } = await sb.rpc('contar_cupos_por_horario');
+    const cont = document.getElementById('resumen-cupos');
+    if (error || !data) { cont.innerHTML = ''; return; }
+    cont.innerHTML = data.map(h => {
+      const lleno = h.disponibles <= 0;
+      const color = lleno ? 'var(--rojo)' : (h.disponibles <= 5 ? 'var(--dorado)' : 'var(--verde, #2ecc71)');
+      return `<span style="background:${color};color:white;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:bold;">
+        ${h.horario}: ${h.ocupados}/25 ${lleno ? '(LLENO)' : ''}
+      </span>`;
+    }).join('');
   }
 
   // ---------- ESCANEO CON CÁMARA (atajo dentro del panel) ----------
@@ -520,7 +535,7 @@
   function pintarTablaAlumnos(lista) {
     const tbody = document.getElementById('tabla-alumnos');
     if (!lista.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="vacio">No hay alumnos que coincidan.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="vacio">No hay alumnos que coincidan.</td></tr>`;
       return;
     }
     const esSuper = miPerfil.rol === 'super_admin';
@@ -531,6 +546,7 @@
           <td>${a.boleta}</td>
           <td>${a.nombre}</td>
           <td>${a.carrera || ''}</td>
+          <td style="font-size:12px;color:var(--sub);">${a.horario || '—'}</td>
           <td><span class="badge ${estadoClase}">${a.estado || ''}</span></td>
           <td class="acciones">
             <button class="btn-editar" onclick="abrirEdicion('${a.boleta}')">Gestionar</button>
