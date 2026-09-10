@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PolyGym IPN - Panel Administrativo</title>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --guinda: #682444;
+    --guinda-hover: #4a1a31;
+    --dorado: #b3a369;
+    --blanco: #ffffff;
+    --gris-fondo: #f8f9fa;
+    --texto: #2d3436;
+    --sub: #636e72;
+    --rojo: #d63031;
+    --verde: #2ecc71;
+    --azul: #0984e3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--gris-fondo);
+    margin: 0;
+    color: var(--texto);
+  }
+  #pantalla-login {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .caja-login {
+    background: var(--blanco);
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 380px;
+  }
+  .caja-login h1 { color: var(--guinda); text-align: center; margin: 0 0 5px; font-size: 24px; }
+  .caja-login p.sub { text-align: center; color: var(--sub); font-size: 13px; margin: 0 0 25px; }
+  input, select {
+    width: 100%; padding: 12px; border: 1px solid #dfe6e9;
+    border-radius: 8px; margin-bottom: 12px; font-size: 14px;
+  }
+  button {
+    width: 100%; padding: 13px; background: var(--guinda); color: white;
+    border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px;
+  }
+  button:hover { background: var(--guinda-hover); }
+  button.secundario { background: transparent; color: var(--guinda); border: 1px solid var(--guinda); margin-top: 8px; }
+  button.secundario:hover { background: #f5eef2; }
+  .error-msg { color: var(--rojo); font-size: 13px; margin: 5px 0 10px; min-height: 16px; }
+  .link-cambio { text-align: center; margin-top: 15px; font-size: 13px; color: var(--sub); }
+  .link-cambio a { color: var(--azul); cursor: pointer; text-decoration: underline; }
+
+  #pantalla-dashboard { display: none; }
+  header {
+    background: var(--guinda); color: white; padding: 15px 25px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+  }
+  header h2 { margin: 0; font-size: 20px; }
+  header .info-usuario { font-size: 13px; opacity: 0.85; }
+  header button { width: auto; padding: 8px 16px; background: rgba(255,255,255,0.15); }
+  nav.tabs {
+    display: flex; gap: 5px; padding: 10px 25px 0; background: var(--blanco);
+    border-bottom: 1px solid #e2e8f0; flex-wrap: wrap;
+  }
+  nav.tabs button {
+    width: auto; background: transparent; color: var(--sub);
+    padding: 10px 16px; border-radius: 8px 8px 0 0; font-weight: 600;
+  }
+  nav.tabs button.activo { background: #f1f5f9; color: var(--guinda); }
+  main { padding: 25px; max-width: 1100px; margin: 0 auto; }
+  .seccion { display: none; }
+  .seccion.activa { display: block; }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+  .toolbar input { flex: 1; min-width: 200px; margin-bottom: 0; }
+  .toolbar button { width: auto; padding: 10px 18px; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  th, td { padding: 12px 10px; text-align: left; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+  th { background: #f8fafc; color: var(--sub); font-weight: 700; text-transform: uppercase; font-size: 11px; }
+  .badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; color: white; display: inline-block; }
+  .badge.activo { background: var(--guinda); }
+  .badge.pendiente { background: var(--dorado); }
+  .badge.alerta { background: var(--rojo); }
+  .acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+  .acciones button { width: auto; padding: 6px 12px; font-size: 12px; }
+  .btn-ver { background: #e3f2fd; color: var(--azul); }
+  .btn-editar { background: #fff8e1; color: #b8860b; }
+  .btn-borrar { background: #fee2e2; color: var(--rojo); }
+  .vacio { text-align: center; padding: 40px; color: var(--sub); }
+
+  .overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    align-items: center; justify-content: center; padding: 20px; z-index: 50;
+  }
+  .overlay.activo { display: flex; }
+  .modal { background: white; border-radius: 14px; padding: 25px; max-width: 420px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { margin-top: 0; color: var(--guinda); }
+  .modal label { font-size: 12px; font-weight: bold; color: var(--sub); display: block; margin-bottom: 4px; }
+  .fila-botones { display: flex; gap: 8px; margin-top: 10px; }
+  .fila-botones button { flex: 1; }
+</style>
+</head>
+<body>
+
+<div id="pantalla-login">
+  <div class="caja-login">
+    <h1>PolyGym IPN</h1>
+    <p class="sub">Panel Administrativo</p>
+
+    <div id="vista-login">
+      <label>Correo</label>
+      <input type="text" id="login-correo" placeholder="correo@ejemplo.com">
+      <label>Contraseña</label>
+      <input type="password" id="login-password" placeholder="••••••••">
+      <div class="error-msg" id="login-error"></div>
+      <button onclick="iniciarSesion()">Ingresar</button>
+      <div class="link-cambio">¿Nuevo administrador? <a onclick="mostrarVista('registro')">Crear cuenta</a></div>
+    </div>
+
+    <div id="vista-registro" style="display:none">
+      <label>Correo</label>
+      <input type="text" id="reg-correo" placeholder="correo@ejemplo.com">
+      <label>Contraseña</label>
+      <input type="password" id="reg-password" placeholder="Mínimo 6 caracteres">
+      <div class="error-msg" id="reg-error"></div>
+      <button onclick="crearCuenta()">Crear cuenta</button>
+      <p style="font-size:12px;color:var(--sub);text-align:center;margin-top:10px">
+        Tu cuenta no tendrá acceso hasta que un Super Admin te asigne un rol.
+      </p>
+      <div class="link-cambio"><a onclick="mostrarVista('login')">Volver a iniciar sesión</a></div>
+    </div>
+  </div>
+</div>
+
+<div id="pantalla-dashboard">
+  <header>
+    <h2>⚡ PolyGym Admin</h2>
+    <div style="display:flex;align-items:center;gap:15px;">
+      <span class="info-usuario" id="info-usuario"></span>
+      <button onclick="cerrarSesion()">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <main>
+    <section class="seccion" id="seccion-monitor">
+      <div class="toolbar">
+        <input type="text" id="monitor-boleta" placeholder="Teclee la boleta y presione Enter"
+               onkeydown="if(event.key==='Enter') verificarManual()">
+        <button onclick="verificarManual()">Verificar</button>
+        <button id="btn-toggle-camara" onclick="alternarCamara()" style="background:var(--azul);">📷 Escanear con cámara</button>
+      </div>
+      <div id="contenedor-camara" style="display:none;max-width:360px;margin:0 auto 15px;border-radius:12px;overflow:hidden;background:black;aspect-ratio:4/3;">
+        <video id="video-monitor" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+      </div>
+      <canvas id="canvas-monitor" style="display:none;"></canvas>
+      <div id="monitor-resultado" style="background:white;border-radius:12px;padding:30px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+        <p style="color:var(--sub);margin:0;">Escriba una boleta o use la cámara para verificar el acceso.</p>
+      </div>
+    </section>
+
+    <section class="seccion" id="seccion-padron">
+      <div class="toolbar">
+        <input type="text" id="buscador" placeholder="Buscar por boleta o nombre..." oninput="filtrarAlumnos()">
+      </div>
+      <table>
+        <thead><tr><th>Boleta</th><th>Nombre</th><th>Carrera</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="tabla-alumnos"></tbody>
+      </table>
+    </section>
+
+    <section class="seccion" id="seccion-admins">
+      <div class="toolbar">
+        <input type="text" id="nuevo-admin-correo" placeholder="Correo del nuevo administrador">
+        <button onclick="agregarAdmin()">➕ Asignar rol admin</button>
+      </div>
+      <table>
+        <thead><tr><th>Nombre</th><th>Rol</th><th>Desde</th><th>Acciones</th></tr></thead>
+        <tbody id="tabla-admins"></tbody>
+      </table>
+    </section>
+
+    <section class="seccion" id="seccion-bitacora">
+      <table>
+        <thead><tr><th>Fecha</th><th>Administrador</th><th>Acción</th><th>Detalle</th></tr></thead>
+        <tbody id="tabla-bitacora"></tbody>
+      </table>
+    </section>
+
+    <section class="seccion" id="seccion-revision">
+      <div id="lista-revision"></div>
+    </section>
+  </main>
+</div>
+
+<div class="overlay" id="modal-editar">
+  <div class="modal">
+    <h3>Gestión de alumno</h3>
+    <label>Nombre</label>
+    <input type="text" id="edit-nombre">
+    <label>Carrera</label>
+    <input type="text" id="edit-carrera">
+    <label>Notas clínicas</label>
+    <input type="text" id="edit-medico">
+    <label>Estado</label>
+    <select id="edit-estado">
+      <option value="ACTIVO">Activo</option>
+      <option value="PENDIENTE">Pendiente</option>
+      <option value="ALERTA MÉDICA">Alerta médica</option>
+    </select>
+    <div class="fila-botones">
+      <button class="btn-ver" onclick="verArchivo('fotos_alumnos', 'foto')">📷 Ver foto</button>
+      <button class="btn-ver" onclick="verArchivo('certificados', 'certificado')">📄 Ver dictamen</button>
+    </div>
+    <div class="fila-botones">
+      <button onclick="guardarEdicion()">Guardar</button>
+      <button class="secundario" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://adcbymcisaefkshctxzf.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_LeJbAunpCFfHHUCEJXOO1w_QWKqQ5Lt';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let miPerfil = null;
+  let alumnosCache = [];
+  let alumnoEditando = null;
+
+  function mostrarVista(v) {
+    document.getElementById('vista-login').style.display = v === 'login' ? 'block' : 'none';
+    document.getElementById('vista-registro').style.display = v === 'registro' ? 'block' : 'none';
+  }
+
+  async function iniciarSesion() {
+    const correo = document.getElementById('login-correo').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errEl = document.getElementById('login-error');
+    errEl.textContent = '';
+
+    const { data, error } = await sb.auth.signInWithPassword({ email: correo, password });
+    if (error || !data.user) {
+      errEl.textContent = 'Credenciales incorrectas.';
+      return;
+    }
+
+    const { data: perfil, error: errPerfil } = await sb
+      .from('perfiles_admin')
+      .select('nombre, rol')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
+    if (errPerfil || !perfil) {
+      errEl.textContent = 'Tu cuenta aún no tiene permisos de administrador asignados.';
+      await sb.auth.signOut();
+      return;
+    }
+
+    miPerfil = perfil;
+    entrarAlDashboard();
+  }
+
+  async function crearCuenta() {
+    const correo = document.getElementById('reg-correo').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const errEl = document.getElementById('reg-error');
+    errEl.textContent = '';
+
+    if (!correo || !correo.includes('@')) {
+      errEl.textContent = 'Escribe un correo válido.';
+      return;
+    }
+
+    if (password.length < 6) {
+      errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+      return;
+    }
+
+    const { error } = await sb.auth.signUp({ email: correo, password: password });
+    if (error) {
+      errEl.textContent = 'No se pudo crear la cuenta: ' + error.message;
+      return;
+    }
+    alert('Cuenta creada. Pide a un Super Admin que te asigne un rol para poder entrar.');
+    mostrarVista('login');
+  }
+
+  async function cerrarSesion() {
+    await sb.auth.signOut();
+    miPerfil = null;
+    document.getElementById('pantalla-dashboard').style.display = 'none';
+    document.getElementById('pantalla-login').style.display = 'flex';
+  }
+
+  function entrarAlDashboard() {
+    document.getElementById('pantalla-login').style.display = 'none';
+    document.getElementById('pantalla-dashboard').style.display = 'block';
+    document.getElementById('info-usuario').textContent =
+      `${miPerfil.nombre || 'Admin'} · ${miPerfil.rol === 'super_admin' ? 'Super Admin' : 'Administrador'}`;
+
+    construirTabs();
+    cambiarSeccion('padron');
+    cargarAlumnos();
+  }
+
+  function construirTabs() {
+    const esSuper = miPerfil.rol === 'super_admin';
+    const tabs = document.getElementById('tabs');
+    tabs.innerHTML = `
+      <button data-tab="monitor" onclick="cambiarSeccion('monitor')">Monitor de Acceso</button>
+      <button data-tab="padron" onclick="cambiarSeccion('padron')">Padrón de alumnos</button>
+      <button data-tab="revision" onclick="cambiarSeccion('revision')">Revisión Médica</button>
+      ${esSuper ? `<button data-tab="admins" onclick="cambiarSeccion('admins')">Administradores</button>` : ''}
+      ${esSuper ? `<button data-tab="bitacora" onclick="cambiarSeccion('bitacora')">Bitácora</button>` : ''}
+    `;
+  }
+
+  function cambiarSeccion(nombre) {
+    document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('activo', b.dataset.tab === nombre));
+    document.querySelectorAll('main .seccion').forEach(s => s.classList.remove('activa'));
+    document.getElementById('seccion-' + nombre).classList.add('activa');
+    if (nombre === 'revision') cargarRevisionMedica();
+    if (nombre === 'admins') cargarAdmins();
+    if (nombre === 'bitacora') cargarBitacora();
+    if (nombre !== 'monitor' && streamCamaraMonitor) {
+      detenerCamaraMonitor();
+      document.getElementById('contenedor-camara').style.display = 'none';
+      document.getElementById('btn-toggle-camara').textContent = '📷 Escanear con cámara';
+    }
+  }
+
+  async function registrarBitacora(accion, detalle) {
+    try {
+      const usuario = (await sb.auth.getUser()).data.user;
+      await sb.from('bitacora').insert({
+        admin_id: usuario.id,
+        admin_nombre: miPerfil.nombre || 'Admin',
+        accion, detalle
+      });
+    } catch (e) { console.error('No se pudo registrar en bitácora', e); }
+  }
+
+  async function cargarAlumnos() {
+    const { data, error } = await sb.from('alumnos').select('*').order('boleta');
+    if (error) { alert('Error al cargar alumnos: ' + error.message); return; }
+    alumnosCache = data || [];
+    pintarTablaAlumnos(alumnosCache);
+  }
+
+  // ---------- ESCANEO CON CÁMARA (atajo dentro del panel) ----------
+  let streamCamaraMonitor = null;
+  let escaneandoMonitor = false;
+  let ultimoEscaneoMonitor = 0;
+
+  async function alternarCamara() {
+    const contenedor = document.getElementById('contenedor-camara');
+    const boton = document.getElementById('btn-toggle-camara');
+    const activa = contenedor.style.display !== 'none';
+
+    if (activa) {
+      detenerCamaraMonitor();
+      contenedor.style.display = 'none';
+      boton.textContent = '📷 Escanear con cámara';
+    } else {
+      try {
+        const video = document.getElementById('video-monitor');
+        streamCamaraMonitor = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = streamCamaraMonitor;
+        contenedor.style.display = 'block';
+        boton.textContent = '⏹ Detener cámara';
+        requestAnimationFrame(bucleEscaneoMonitor);
+      } catch (e) {
+        alert('No se pudo acceder a la cámara: ' + e.message);
+      }
+    }
+  }
+
+  function detenerCamaraMonitor() {
+    if (streamCamaraMonitor) streamCamaraMonitor.getTracks().forEach(t => t.stop());
+    streamCamaraMonitor = null;
+  }
+
+  function bucleEscaneoMonitor() {
+    if (!streamCamaraMonitor) return; // la cámara se detuvo, paramos el bucle
+    const video = document.getElementById('video-monitor');
+    const canvas = document.getElementById('canvas-monitor');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const codigo = jsQR(imageData.data, imageData.width, imageData.height);
+
+      if (codigo && codigo.data && (Date.now() - ultimoEscaneoMonitor > 3000) && !escaneandoMonitor) {
+        ultimoEscaneoMonitor = Date.now();
+        escaneandoMonitor = true;
+        procesarQRDesdeCamara(codigo.data.trim()).finally(() => { escaneandoMonitor = false; });
+      }
+    }
+    requestAnimationFrame(bucleEscaneoMonitor);
+  }
+
+  async function procesarQRDesdeCamara(qrCompleto) {
+    const contenedor = document.getElementById('monitor-resultado');
+    // Esta sí valida la firma criptográfica real del QR (a diferencia del campo manual, que confía en que el admin ya vio la credencial física)
+    const { data, error } = await sb.rpc('verificar_acceso_seguro', { qr_completo: qrCompleto });
+    const resultado = (!error && data && data.length > 0) ? data[0] : null;
+
+    if (!resultado) {
+      contenedor.style.background = '#fff5f5';
+      contenedor.innerHTML = `<h3 style="color:var(--rojo);margin:0 0 8px;">❌ QR INVÁLIDO O NO REGISTRADO</h3>`;
+      return;
+    }
+
+    const estado = String(resultado.estado || '').toUpperCase();
+    if (estado === 'ACTIVO') {
+      contenedor.style.background = '#f4fbf6';
+      contenedor.innerHTML = `<h3 style="color:var(--verde);margin:0 0 8px;">✅ ACCESO PERMITIDO</h3><p style="margin:0;"><b>${resultado.nombre}</b></p>`;
+    } else if (estado === 'FUERA_DE_HORARIO') {
+      contenedor.style.background = '#fffdf0';
+      contenedor.innerHTML = `<h3 style="color:var(--dorado);margin:0 0 8px;">⏰ FUERA DE SU HORARIO ASIGNADO</h3><p style="margin:0;"><b>${resultado.nombre}</b></p>`;
+    } else if (estado.includes('ALERTA')) {
+      contenedor.style.background = '#fff5f5';
+      contenedor.innerHTML = `<h3 style="color:var(--rojo);margin:0 0 8px;">🚨 ALERTA MÉDICA - BLOQUEADO</h3><p style="margin:0;"><b>${resultado.nombre}</b></p>`;
+    } else if (estado === 'PENDIENTE') {
+      contenedor.style.background = '#fffdf0';
+      contenedor.innerHTML = `<h3 style="color:var(--dorado);margin:0 0 8px;">⏳ DOCUMENTACIÓN PENDIENTE</h3><p style="margin:0;"><b>${resultado.nombre}</b></p>`;
+    } else {
+      contenedor.style.background = '#f8fafc';
+      contenedor.innerHTML = `<h3 style="margin:0 0 8px;">❓ ESTADO DESCONOCIDO</h3><p style="margin:0;"><b>${resultado.nombre}</b></p>`;
+    }
+  }
+
+  // ---------- MONITOR DE ACCESO MANUAL ----------
+  async function verificarManual() {
+    const boleta = document.getElementById('monitor-boleta').value.trim().toUpperCase();
+    const contenedor = document.getElementById('monitor-resultado');
+    document.getElementById('monitor-boleta').value = '';
+    if (!boleta) return;
+
+    // Traemos el dato más reciente directo de Supabase (no de la caché)
+    const { data, error } = await sb.from('alumnos').select('*').eq('boleta', boleta).maybeSingle();
+
+    if (error || !data) {
+      contenedor.style.background = '#fff5f5';
+      contenedor.innerHTML = `<h3 style="color:var(--rojo);margin:0 0 8px;">❌ MATRÍCULA NO REGISTRADA</h3>
+        <p style="color:var(--texto);margin:0;">La boleta ${boleta} no existe en la base de datos.</p>`;
+      return;
+    }
+
+    const estado = String(data.estado || '').toUpperCase();
+    if (estado === 'ALERTA MÉDICA' || estado === 'ALERTA MEDICA') {
+      contenedor.style.background = '#fff5f5';
+      contenedor.innerHTML = `<h3 style="color:var(--rojo);margin:0 0 8px;">🚨 ALERTA MÉDICA - BLOQUEADO</h3>
+        <p style="margin:4px 0;"><b>${data.nombre}</b> · Boleta ${data.boleta}</p>
+        <p style="margin:4px 0;color:var(--sub);">Carrera: ${data.carrera || ''}</p>
+        <p style="margin:8px 0 0;color:var(--rojo);">Dictamen: ${data.detalle_medico || 'No especificado'}</p>`;
+    } else if (estado === 'PENDIENTE') {
+      contenedor.style.background = '#fffdf0';
+      contenedor.innerHTML = `<h3 style="color:var(--dorado);margin:0 0 8px;">⏳ DOCUMENTACIÓN PENDIENTE</h3>
+        <p style="margin:4px 0;"><b>${data.nombre}</b> · Boleta ${data.boleta}</p>
+        <p style="margin:4px 0;color:var(--sub);">Carrera: ${data.carrera || ''}</p>
+        <p style="margin:8px 0 0;color:var(--dorado);">Falta validación de examen médico.</p>`;
+    } else {
+      contenedor.style.background = '#f4fbf6';
+      contenedor.innerHTML = `<h3 style="color:var(--verde);margin:0 0 8px;">✅ BIENVENIDO A POLYGYM</h3>
+        <p style="margin:4px 0;"><b>${data.nombre}</b> · Boleta ${data.boleta}</p>
+        <p style="margin:4px 0;color:var(--sub);">Carrera: ${data.carrera || ''}</p>
+        <p style="margin:8px 0 0;color:var(--verde);">Estado clínico: apto / sin restricciones.</p>`;
+    }
+  }
+
+  // ---------- REVISIÓN MÉDICA (cola de pendientes) ----------
+  async function cargarRevisionMedica() {
+    const { data, error } = await sb.from('alumnos').select('*').eq('estado', 'PENDIENTE').order('boleta');
+    const cont = document.getElementById('lista-revision');
+    if (error) { cont.innerHTML = `<div class="vacio">Error: ${error.message}</div>`; return; }
+    if (!data.length) {
+      cont.innerHTML = `<div style="background:white;border-radius:12px;padding:40px;text-align:center;color:var(--verde);font-weight:bold;">✅ Todo al día. No hay dictámenes pendientes.</div>`;
+      return;
+    }
+    cont.innerHTML = data.map(a => `
+      <div style="background:#fffdf0;border:1px solid var(--dorado);border-radius:10px;padding:18px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-weight:bold;">${a.boleta} - ${a.nombre}</div>
+          <div style="font-size:12px;color:var(--sub);">Carrera: ${a.carrera || 'N/A'} · Notas: ${a.detalle_medico || 'Ninguna'}</div>
+        </div>
+        <button style="width:auto;background:var(--verde);padding:10px 18px;" onclick="aprobarRapido('${a.boleta}')">✔ Aprobar acceso</button>
+      </div>
+    `).join('');
+  }
+
+  async function aprobarRapido(boleta) {
+    const { error } = await sb.from('alumnos').update({ estado: 'ACTIVO' }).eq('boleta', boleta);
+    if (error) { alert('Error al aprobar: ' + error.message); return; }
+    await registrarBitacora('Aprobación de dictamen', `Boleta ${boleta}`);
+    cargarRevisionMedica();
+    cargarAlumnos();
+  }
+
+  function filtrarAlumnos() {
+    const q = document.getElementById('buscador').value.trim().toUpperCase();
+    if (!q) { pintarTablaAlumnos(alumnosCache); return; }
+    pintarTablaAlumnos(alumnosCache.filter(a =>
+      String(a.boleta).toUpperCase().includes(q) || String(a.nombre).toUpperCase().includes(q)
+    ));
+  }
+
+  function pintarTablaAlumnos(lista) {
+    const tbody = document.getElementById('tabla-alumnos');
+    if (!lista.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="vacio">No hay alumnos que coincidan.</td></tr>`;
+      return;
+    }
+    const esSuper = miPerfil.rol === 'super_admin';
+    tbody.innerHTML = lista.map(a => {
+      const estadoClase = a.estado === 'ACTIVO' ? 'activo' : (a.estado === 'PENDIENTE' ? 'pendiente' : 'alerta');
+      return `
+        <tr>
+          <td>${a.boleta}</td>
+          <td>${a.nombre}</td>
+          <td>${a.carrera || ''}</td>
+          <td><span class="badge ${estadoClase}">${a.estado || ''}</span></td>
+          <td class="acciones">
+            <button class="btn-editar" onclick="abrirEdicion('${a.boleta}')">Gestionar</button>
+            ${esSuper ? `<button class="btn-borrar" onclick="eliminarAlumno('${a.boleta}', '${(a.nombre||'').replace(/'/g,"")}')">Eliminar</button>` : ''}
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  function abrirEdicion(boleta) {
+    alumnoEditando = alumnosCache.find(a => String(a.boleta) === String(boleta));
+    if (!alumnoEditando) return;
+    document.getElementById('edit-nombre').value = alumnoEditando.nombre || '';
+    document.getElementById('edit-carrera').value = alumnoEditando.carrera || '';
+    document.getElementById('edit-medico').value = alumnoEditando.detalle_medico || '';
+    document.getElementById('edit-estado').value = alumnoEditando.estado || 'PENDIENTE';
+    document.getElementById('modal-editar').classList.add('activo');
+  }
+
+  function cerrarModal() {
+    document.getElementById('modal-editar').classList.remove('activo');
+    alumnoEditando = null;
+  }
+
+  async function guardarEdicion() {
+    if (!alumnoEditando) return;
+    const cambios = {
+      nombre: document.getElementById('edit-nombre').value.trim(),
+      carrera: document.getElementById('edit-carrera').value.trim(),
+      detalle_medico: document.getElementById('edit-medico').value.trim(),
+      estado: document.getElementById('edit-estado').value
+    };
+    const { error } = await sb.from('alumnos').update(cambios).eq('boleta', alumnoEditando.boleta);
+    if (error) { alert('Error al guardar: ' + error.message); return; }
+    await registrarBitacora('Edición de alumno', `Boleta ${alumnoEditando.boleta}: estado -> ${cambios.estado}`);
+    cerrarModal();
+    cargarAlumnos();
+  }
+
+  async function eliminarAlumno(boleta, nombre) {
+    if (!confirm(`¿Eliminar permanentemente a ${nombre} (boleta ${boleta})? Esta acción no se puede deshacer.`)) return;
+    const { error } = await sb.from('alumnos').delete().eq('boleta', boleta);
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    await registrarBitacora('Eliminación de alumno', `Boleta ${boleta} (${nombre})`);
+    cargarAlumnos();
+  }
+
+  async function verArchivo(bucket, tipo) {
+    if (!alumnoEditando) return;
+    const ruta = tipo === 'foto' ? alumnoEditando.foto_url : alumnoEditando.certificado_url;
+    if (!ruta) { alert('Este alumno no tiene ese archivo registrado.'); return; }
+    const { data, error } = await sb.storage.from(bucket).createSignedUrl(ruta, 300);
+    if (error || !data) { alert('No se pudo generar el link: ' + (error?.message || '')); return; }
+    window.open(data.signedUrl, '_blank');
+  }
+
+  async function cargarAdmins() {
+    const { data, error } = await sb.from('perfiles_admin').select('*').order('creado_el');
+    const tbody = document.getElementById('tabla-admins');
+    if (error) { tbody.innerHTML = `<tr><td colspan="4" class="vacio">Error: ${error.message}</td></tr>`; return; }
+    if (!data.length) { tbody.innerHTML = `<tr><td colspan="4" class="vacio">Sin administradores registrados.</td></tr>`; return; }
+    tbody.innerHTML = data.map(p => `
+      <tr>
+        <td>${p.nombre || '(sin nombre)'}</td>
+        <td><span class="badge ${p.rol === 'super_admin' ? 'alerta' : 'activo'}">${p.rol}</span></td>
+        <td>${new Date(p.creado_el).toLocaleDateString()}</td>
+        <td class="acciones">
+          ${p.rol !== 'super_admin' ? `<button class="btn-borrar" onclick="quitarAdmin('${p.id}')">Quitar acceso</button>` : ''}
+        </td>
+      </tr>`).join('');
+  }
+
+  async function agregarAdmin() {
+    const correo = document.getElementById('nuevo-admin-correo').value.trim();
+    if (!correo) return;
+    const { data: userId, error: errBusqueda } = await sb.rpc('obtener_id_por_correo', { correo_buscado: correo });
+    if (errBusqueda || !userId) {
+      alert('No se encontró un usuario con ese correo. Primero debe crear su cuenta en "Crear cuenta".');
+      return;
+    }
+    const { error } = await sb.from('perfiles_admin').upsert({ id: userId, nombre: correo, rol: 'admin' });
+    if (error) { alert('Error al asignar rol: ' + error.message); return; }
+    await registrarBitacora('Nuevo administrador', correo);
+    document.getElementById('nuevo-admin-correo').value = '';
+    cargarAdmins();
+  }
+
+  async function quitarAdmin(id) {
+    if (!confirm('¿Quitar el acceso de administrador a este usuario?')) return;
+    const { error } = await sb.from('perfiles_admin').delete().eq('id', id);
+    if (error) { alert('Error: ' + error.message); return; }
+    await registrarBitacora('Acceso revocado', id);
+    cargarAdmins();
+  }
+
+  async function cargarBitacora() {
+    const { data, error } = await sb.from('bitacora').select('*').order('fecha', { ascending: false }).limit(100);
+    const tbody = document.getElementById('tabla-bitacora');
+    if (error) { tbody.innerHTML = `<tr><td colspan="4" class="vacio">Error: ${error.message}</td></tr>`; return; }
+    if (!data.length) { tbody.innerHTML = `<tr><td colspan="4" class="vacio">Sin registros todavía.</td></tr>`; return; }
+    tbody.innerHTML = data.map(b => `
+      <tr>
+        <td>${new Date(b.fecha).toLocaleString()}</td>
+        <td>${b.admin_nombre || ''}</td>
+        <td>${b.accion}</td>
+        <td>${b.detalle || ''}</td>
+      </tr>`).join('');
+  }
+
+  (async () => {
+    const { data } = await sb.auth.getSession();
+    if (data.session) {
+      const { data: perfil } = await sb.from('perfiles_admin').select('nombre, rol').eq('id', data.session.user.id).maybeSingle();
+      if (perfil) { miPerfil = perfil; entrarAlDashboard(); }
+    }
+  })();
+</script>
+</body>
+</html>

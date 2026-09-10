@@ -1,0 +1,1799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>PolyGym IPN - Torniquete Virtual</title>
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Lector QR -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+<style>
+
+:root {
+    --guinda: #682444;
+    --guinda-dark: #42152b;
+
+    --fondo: #eef1f5;
+    --blanco: #ffffff;
+
+    --texto: #171212;
+    --sub: #718096;
+
+    --verde: #16a34a;
+    --verde-claro: #22c55e;
+
+    --rojo: #dc2626;
+    --rojo-claro: #ef4444;
+
+    --naranja: #f97316;
+    --amarillo: #eab308;
+
+    --azul: #0284c7;
+
+    --sombra: 0 15px 40px rgba(0,0,0,.15);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+
+    font-family:
+        'Segoe UI',
+        Tahoma,
+        Geneva,
+        Verdana,
+        sans-serif;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f3f4f6,
+            #e5e7eb
+        );
+
+    color: var(--texto);
+
+    display: flex;
+    justify-content: center;
+
+    padding: 20px;
+}
+
+
+/* CONTENEDOR PRINCIPAL */
+
+.app {
+    width: 100%;
+    max-width: 850px;
+}
+
+
+/* ENCABEZADO */
+
+header {
+    background: var(--guinda);
+
+    color: white;
+
+    border-radius: 20px;
+
+    padding: 22px;
+
+    text-align: center;
+
+    box-shadow: var(--sombra);
+
+    margin-bottom: 18px;
+}
+
+header h1 {
+    margin: 0;
+
+    font-size: 28px;
+
+    letter-spacing: .5px;
+}
+
+header p {
+    margin: 7px 0 0;
+
+    opacity: .8;
+
+    font-size: 14px;
+}
+
+
+/* CONEXIÓN */
+
+#estado-conexion {
+
+    margin-top: 12px;
+
+    background: rgba(255,255,255,.12);
+
+    border-radius: 10px;
+
+    padding: 9px;
+
+    font-size: 13px;
+}
+
+
+/* SELECTOR */
+
+.control-camara {
+
+    background: white;
+
+    border-radius: 16px;
+
+    padding: 15px;
+
+    box-shadow: var(--sombra);
+
+    margin-bottom: 18px;
+}
+
+.control-camara label {
+
+    display: block;
+
+    font-size: 13px;
+
+    font-weight: bold;
+
+    margin-bottom: 7px;
+
+    color: var(--sub);
+}
+
+select {
+
+    width: 100%;
+
+    padding: 12px;
+
+    border-radius: 10px;
+
+    border: 1px solid #d1d5db;
+
+    background: white;
+
+    font-size: 14px;
+
+    outline: none;
+}
+
+
+/* CAMARA */
+
+.scanner-card {
+
+    background: white;
+
+    padding: 18px;
+
+    border-radius: 20px;
+
+    box-shadow: var(--sombra);
+
+    margin-bottom: 18px;
+}
+
+.scanner-title {
+
+    text-align: center;
+
+    margin-bottom: 15px;
+
+    font-size: 18px;
+
+    font-weight: bold;
+}
+
+#contenedor-video {
+
+    position: relative;
+
+    width: 100%;
+
+    max-width: 600px;
+
+    aspect-ratio: 4 / 3;
+
+    margin: auto;
+
+    background: #000;
+
+    border-radius: 16px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.3);
+}
+
+video {
+
+    width: 100%;
+
+    height: 100%;
+
+    object-fit: cover;
+}
+
+
+/* MARCO DEL QR */
+
+#marco-qr {
+
+    position: absolute;
+
+    width: 55%;
+
+    aspect-ratio: 1;
+
+    max-width: 260px;
+
+    top: 50%;
+
+    left: 50%;
+
+    transform: translate(-50%, -50%);
+
+    border: 3px solid #00e5ff;
+
+    border-radius: 18px;
+
+    box-shadow:
+        0 0 0 9999px rgba(0,0,0,.25),
+        0 0 25px rgba(0,229,255,.8);
+
+    pointer-events: none;
+}
+
+
+/* ESTADO */
+
+#cartel-estado {
+
+    width: 100%;
+
+    max-width: 600px;
+
+    margin: 18px auto 0;
+
+    padding: 25px;
+
+    border-radius: 18px;
+
+    text-align: center;
+
+    background: var(--azul);
+
+    color: white;
+
+    transition:
+        background .3s,
+        transform .2s;
+
+    box-shadow: var(--sombra);
+}
+
+#cartel-estado h2 {
+
+    margin: 0 0 8px;
+
+    font-size: 23px;
+}
+
+#cartel-estado p {
+
+    margin: 4px 0;
+
+    font-size: 15px;
+}
+
+#detalle {
+
+    opacity: .9;
+
+    font-size: 13px !important;
+}
+
+
+/* BOTONES */
+
+.botones {
+
+    display: flex;
+
+    gap: 10px;
+
+    margin-top: 15px;
+}
+
+button {
+
+    flex: 1;
+
+    border: none;
+
+    padding: 13px;
+
+    border-radius: 11px;
+
+    cursor: pointer;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+    transition: .2s;
+}
+
+button:hover {
+
+    transform: translateY(-2px);
+}
+
+.btn-iniciar {
+
+    background: var(--guinda);
+
+    color: white;
+}
+
+.btn-detener {
+
+    background: #374151;
+
+    color: white;
+}
+
+
+/* OFFLINE */
+
+.sufijo-offline {
+
+    margin-top: 10px;
+
+    color: #fff7ae;
+
+    font-size: 12px;
+}
+
+
+/* HISTORIAL */
+
+.historial {
+
+    background: white;
+
+    border-radius: 20px;
+
+    padding: 20px;
+
+    box-shadow: var(--sombra);
+
+    margin-top: 18px;
+}
+
+.historial h2 {
+
+    margin: 0 0 15px;
+
+    font-size: 18px;
+}
+
+.historial-item {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 12px;
+
+    border-radius: 10px;
+
+    background: #f8fafc;
+
+    margin-bottom: 8px;
+
+    border-left: 5px solid #94a3b8;
+}
+
+.historial-item.permitido {
+
+    border-left-color: var(--verde);
+}
+
+.historial-item.denegado {
+
+    border-left-color: var(--rojo);
+}
+
+.historial-nombre {
+
+    font-weight: bold;
+
+    font-size: 14px;
+}
+
+.historial-info {
+
+    color: var(--sub);
+
+    font-size: 11px;
+
+    margin-top: 3px;
+}
+
+.badge {
+
+    white-space: nowrap;
+
+    padding: 5px 8px;
+
+    border-radius: 7px;
+
+    font-size: 10px;
+
+    font-weight: bold;
+}
+
+.badge.verde {
+
+    background: #dcfce7;
+
+    color: #166534;
+}
+
+.badge.rojo {
+
+    background: #fee2e2;
+
+    color: #991b1b;
+}
+
+
+/* FOOTER */
+
+footer {
+
+    text-align: center;
+
+    color: var(--sub);
+
+    font-size: 11px;
+
+    padding: 20px;
+}
+
+
+/* RESPONSIVE */
+
+@media(max-width:600px) {
+
+    body {
+        padding: 10px;
+    }
+
+    header h1 {
+        font-size: 22px;
+    }
+
+    #cartel-estado h2 {
+        font-size: 19px;
+    }
+
+    .botones {
+        flex-direction: column;
+    }
+
+}
+
+</style>
+</head>
+
+
+<body>
+
+<div class="app">
+
+    <!-- ENCABEZADO -->
+
+    <header>
+
+        <h1>
+            SISTEMA DE ACCESO
+        </h1>
+
+        <p>
+            PolyGym IPN · ESIME
+        </p>
+
+        <div id="estado-conexion">
+            🔄 Iniciando sistema...
+        </div>
+
+    </header>
+
+
+    <!-- SELECTOR DE CÁMARA -->
+
+    <div class="control-camara">
+
+        <label for="selector-camara">
+            📷 Seleccionar cámara
+        </label>
+
+        <select
+            id="selector-camara"
+            onchange="cambiarCamara(this.value)"
+        >
+        </select>
+
+    </div>
+
+
+    <!-- ESCÁNER -->
+
+    <div class="scanner-card">
+
+        <div class="scanner-title">
+            Escanea el código QR del alumno
+        </div>
+
+        <div id="contenedor-video">
+
+            <video
+                id="video"
+                autoplay
+                playsinline
+                muted
+            ></video>
+
+            <div id="marco-qr"></div>
+
+        </div>
+
+        <canvas
+            id="canvas"
+            style="display:none"
+        ></canvas>
+
+
+        <!-- ESTADO -->
+
+        <div id="cartel-estado">
+
+            <h2>
+                ESPERANDO LECTURA...
+            </h2>
+
+            <p id="nombre-alumno">
+                Presenta tu código QR frente a la cámara
+            </p>
+
+            <p id="detalle"></p>
+
+        </div>
+
+
+        <!-- BOTONES -->
+
+        <div class="botones">
+
+            <button
+                class="btn-iniciar"
+                onclick="iniciarCamara()"
+            >
+                📷 Iniciar cámara
+            </button>
+
+            <button
+                class="btn-detener"
+                onclick="detenerCamara()"
+            >
+                ⛔ Detener cámara
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- HISTORIAL -->
+
+    <div class="historial">
+
+        <h2>
+            🕘 Últimos accesos
+        </h2>
+
+        <div id="lista-historial">
+
+            <p style="color:#718096;font-size:13px;">
+                No hay accesos registrados en esta sesión.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <footer>
+        PolyGym IPN · Sistema de control de acceso
+    </footer>
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   CONFIGURACIÓN SUPABASE
+===================================================== */
+
+const SUPABASE_URL =
+    'https://adcbymcisaefkshctxzf.supabase.co';
+
+const SUPABASE_KEY =
+    'sb_publishable_LeJbAunpCFfHHUCEJXOO1w_QWKqQ5Lt';
+
+const sb =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+
+/* =====================================================
+   ELEMENTOS
+===================================================== */
+
+const video =
+    document.getElementById('video');
+
+const canvas =
+    document.getElementById('canvas');
+
+const ctx =
+    canvas.getContext(
+        '2d',
+        {
+            willReadFrequently: true
+        }
+    );
+
+const cartel =
+    document.getElementById(
+        'cartel-estado'
+    );
+
+const estadoConexion =
+    document.getElementById(
+        'estado-conexion'
+    );
+
+const selectorCamara =
+    document.getElementById(
+        'selector-camara'
+    );
+
+const nombreAlumno =
+    document.getElementById(
+        'nombre-alumno'
+    );
+
+const detalle =
+    document.getElementById(
+        'detalle'
+    );
+
+const listaHistorial =
+    document.getElementById(
+        'lista-historial'
+    );
+
+
+/* =====================================================
+   CONFIGURACIÓN
+===================================================== */
+
+const CLAVE_CACHE =
+    'polygym_cache_padron';
+
+const INTERVALO_SINCRONIA_MS =
+    60000;
+
+const TIEMPO_ESPERA_MS =
+    4000;
+
+
+/* =====================================================
+   VARIABLES
+===================================================== */
+
+let streamActual = null;
+
+let ultimoEscaneo = 0;
+
+let escaneando = false;
+
+let historial = [];
+
+
+/* =====================================================
+   SEGURIDAD:
+   ESCAPAR TEXTO HTML
+===================================================== */
+
+function escapeHTML(texto) {
+
+    const div =
+        document.createElement('div');
+
+    div.textContent =
+        texto ?? '';
+
+    return div.innerHTML;
+}
+
+
+/* =====================================================
+   CÁMARAS
+===================================================== */
+
+async function listarCamaras() {
+
+    try {
+
+        const dispositivos =
+            await navigator
+                .mediaDevices
+                .enumerateDevices();
+
+        const camaras =
+            dispositivos.filter(
+                d => d.kind === 'videoinput'
+            );
+
+        selectorCamara.innerHTML = '';
+
+        camaras.forEach((camara, indice) => {
+
+            const option =
+                document.createElement('option');
+
+            option.value =
+                camara.deviceId;
+
+            option.textContent =
+                camara.label ||
+                `Cámara ${indice + 1}`;
+
+            selectorCamara.appendChild(
+                option
+            );
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            'Error enumerando cámaras:',
+            error
+        );
+
+    }
+}
+
+
+/* =====================================================
+   INICIAR CÁMARA
+===================================================== */
+
+async function iniciarCamara(deviceId = null) {
+
+    try {
+
+        if (streamActual) {
+
+            streamActual
+                .getTracks()
+                .forEach(track =>
+                    track.stop()
+                );
+        }
+
+
+        const constraints = {
+
+            video: deviceId
+                ? {
+                    deviceId: {
+                        exact: deviceId
+                    }
+                }
+                : {
+                    facingMode: {
+                        ideal: 'environment'
+                    }
+                }
+
+        };
+
+
+        streamActual =
+            await navigator
+                .mediaDevices
+                .getUserMedia(
+                    constraints
+                );
+
+
+        video.srcObject =
+            streamActual;
+
+
+        await video.play();
+
+
+        await listarCamaras();
+
+
+        estadoConexion.textContent +=
+            ' · 📷 Cámara lista';
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        estadoConexion.textContent =
+            '❌ No se pudo acceder a la cámara.';
+
+        mostrarEstado(
+            'var(--rojo)',
+            '❌ ERROR DE CÁMARA',
+            error.message
+        );
+
+    }
+}
+
+
+/* =====================================================
+   CAMBIAR CÁMARA
+===================================================== */
+
+function cambiarCamara(deviceId) {
+
+    if (!deviceId) return;
+
+    iniciarCamara(deviceId);
+
+}
+
+
+/* =====================================================
+   DETENER CÁMARA
+===================================================== */
+
+function detenerCamara() {
+
+    if (streamActual) {
+
+        streamActual
+            .getTracks()
+            .forEach(track =>
+                track.stop()
+            );
+
+        streamActual = null;
+
+        video.srcObject = null;
+
+    }
+
+    mostrarEstado(
+        '#64748b',
+        '⛔ CÁMARA DETENIDA',
+        'Presiona "Iniciar cámara" para continuar.'
+    );
+}
+
+
+/* =====================================================
+   CACHE LOCAL
+===================================================== */
+
+function guardarCache(padron) {
+
+    localStorage.setItem(
+
+        CLAVE_CACHE,
+
+        JSON.stringify({
+
+            actualizado:
+                new Date().toISOString(),
+
+            padron
+
+        })
+
+    );
+
+}
+
+
+function cargarCache() {
+
+    try {
+
+        const datos =
+            JSON.parse(
+                localStorage.getItem(
+                    CLAVE_CACHE
+                )
+            );
+
+        return datos || null;
+
+    } catch {
+
+        return null;
+
+    }
+
+}
+
+
+/* =====================================================
+   SINCRONIZAR PADRÓN
+===================================================== */
+
+async function sincronizarPadron() {
+
+    try {
+
+        const {
+            data,
+            error
+        } =
+            await sb.rpc(
+                'obtener_padron_offline'
+            );
+
+
+        if (error) {
+
+            throw error;
+
+        }
+
+
+        const padron = {};
+
+
+        if (Array.isArray(data)) {
+
+            data.forEach(fila => {
+
+                if (!fila.boleta) return;
+
+                padron[
+                    String(fila.boleta)
+                ] = {
+
+                    nombre:
+                        fila.nombre,
+
+                    estado:
+                        fila.estado,
+
+                    horario:
+                        fila.horario,
+
+                    firma:
+                        fila.firma
+
+                };
+
+            });
+
+        }
+
+
+        guardarCache(padron);
+
+
+        const hora =
+            new Date()
+                .toLocaleTimeString(
+                    'es-MX'
+                );
+
+
+        estadoConexion.textContent =
+            `🟢 EN LÍNEA · Padrón actualizado ${hora}`;
+
+
+    } catch (error) {
+
+        console.warn(
+            'Sin conexión:',
+            error
+        );
+
+
+        const cache =
+            cargarCache();
+
+
+        if (cache) {
+
+            const hora =
+                new Date(
+                    cache.actualizado
+                )
+                .toLocaleTimeString(
+                    'es-MX'
+                );
+
+
+            estadoConexion.textContent =
+                `🟠 SIN CONEXIÓN · Copia local de ${hora}`;
+
+        } else {
+
+            estadoConexion.textContent =
+                '🔴 SIN CONEXIÓN · No existe copia local';
+
+        }
+
+    }
+
+
+    setTimeout(
+        sincronizarPadron,
+        INTERVALO_SINCRONIA_MS
+    );
+
+}
+
+
+/* =====================================================
+   HORARIO
+===================================================== */
+
+function dentroDeHorario(horarioTexto) {
+
+    if (!horarioTexto) {
+
+        return true;
+
+    }
+
+
+    try {
+
+        const partes =
+            horarioTexto.split(' - ');
+
+
+        if (partes.length !== 2) {
+
+            return true;
+
+        }
+
+
+        const [hIni, mIni] =
+            partes[0]
+                .split(':')
+                .map(Number);
+
+
+        const [hFin, mFin] =
+            partes[1]
+                .slice(0, 5)
+                .split(':')
+                .map(Number);
+
+
+        const ahora =
+            new Date();
+
+
+        const minutosAhora =
+            ahora.getHours() * 60 +
+            ahora.getMinutes();
+
+
+        const minutosIni =
+            hIni * 60 + mIni;
+
+
+        const minutosFin =
+            hFin * 60 + mFin;
+
+
+        return (
+            minutosAhora >= minutosIni &&
+            minutosAhora <= minutosFin
+        );
+
+
+    } catch {
+
+        return false;
+
+    }
+
+}
+
+
+/* =====================================================
+   VALIDACIÓN LOCAL
+===================================================== */
+
+function verificarConCopiaLocal(
+    qrCompleto
+) {
+
+    const cache =
+        cargarCache();
+
+
+    if (
+        !cache ||
+        !cache.padron ||
+        !qrCompleto.includes('|')
+    ) {
+
+        return null;
+
+    }
+
+
+    const partes =
+        qrCompleto.split('|');
+
+
+    if (partes.length !== 2) {
+
+        return null;
+
+    }
+
+
+    const boleta =
+        partes[0].trim();
+
+    const firma =
+        partes[1].trim();
+
+
+    const registro =
+        cache.padron[boleta];
+
+
+    /*
+       SI LA BOLETA NO EXISTE:
+       DENEGAR
+    */
+
+    if (!registro) {
+
+        return null;
+
+    }
+
+
+    /*
+       SI LA FIRMA NO COINCIDE:
+       DENEGAR
+    */
+
+    if (
+        !registro.firma ||
+        registro.firma !== firma
+    ) {
+
+        return null;
+
+    }
+
+
+    /*
+       SOLO ACTIVO PUEDE CONTINUAR
+    */
+
+    const estado =
+        String(
+            registro.estado || ''
+        )
+        .trim()
+        .toUpperCase();
+
+
+    if (
+        estado === 'ACTIVO' &&
+        !dentroDeHorario(
+            registro.horario
+        )
+    ) {
+
+        return {
+
+            nombre:
+                registro.nombre,
+
+            estado:
+                'FUERA_DE_HORARIO'
+
+        };
+
+    }
+
+
+    return {
+
+        nombre:
+            registro.nombre,
+
+        estado:
+            estado
+
+    };
+
+}
+
+
+/* =====================================================
+   MOSTRAR ESTADO
+===================================================== */
+
+function mostrarEstado(
+    color,
+    titulo,
+    texto = ''
+) {
+
+    cartel.style.background =
+        color;
+
+    cartel.innerHTML = `
+
+        <h2>
+            ${titulo}
+        </h2>
+
+        <p>
+            ${escapeHTML(texto)}
+        </p>
+
+    `;
+
+}
+
+
+/* =====================================================
+   PROCESAR QR
+===================================================== */
+
+async function procesarQR(qrCompleto) {
+
+qrCompleto = String(qrCompleto || '').trim();
+
+console.log("QR DETECTADO:", qrCompleto);
+
+// Si el QR está vacío
+if (!qrCompleto) {
+    mostrarEstado(
+        'var(--rojo)',
+        '❌ ACCESO DENEGADO',
+        'El código QR está vacío.'
+    );
+    return;
+}
+
+let resultado = null;
+let fuente = 'Supabase';
+
+
+// ==========================================
+// CONSULTAR SUPABASE
+// ==========================================
+
+try {
+
+    console.log("Consultando Supabase...");
+
+    const { data, error } = await sb.rpc(
+        'verificar_acceso_seguro',
+        {
+            qr_completo: qrCompleto
+        }
+    );
+
+    console.log("Respuesta Supabase:", data);
+    console.log("Error Supabase:", error);
+
+    if (error) {
+        throw error;
+    }
+
+    if (data && data.length > 0) {
+        resultado = data[0];
+    } else {
+        resultado = null;
+    }
+
+
+} catch (error) {
+
+    console.error(
+        "ERROR SUPABASE:",
+        error
+    );
+
+    // Intentar copia local
+    resultado =
+        verificarConCopiaLocal(qrCompleto);
+
+    fuente =
+        'Copia local';
+
+
+    /*
+     * IMPORTANTE:
+     *
+     * Si tampoco existe en la copia local,
+     * el acceso queda DENEGADO.
+     */
+
+}
+
+
+// ==========================================
+// QR NO REGISTRADO
+// ==========================================
+
+if (!resultado) {
+
+    console.log(
+        "QR NO REGISTRADO:",
+        qrCompleto
+    );
+
+    mostrarEstado(
+        'var(--rojo)',
+        '❌ ACCESO DENEGADO',
+        'QR no registrado en el sistema.'
+    );
+
+    agregarHistorial(
+        'Desconocido',
+        'QR no registrado',
+        false
+    );
+
+    return;
+}
+
+
+// ==========================================
+// OBTENER ESTADO
+// ==========================================
+
+const estado =
+    String(resultado.estado || '')
+    .trim()
+    .toUpperCase();
+
+const nombre =
+    resultado.nombre ||
+    'Alumno desconocido';
+
+
+console.log(
+    "ALUMNO:",
+    nombre,
+    "ESTADO:",
+    estado
+);
+
+
+// ==========================================
+// ÚNICA CONDICIÓN PARA ENTRAR
+// ==========================================
+
+if (estado === 'ACTIVO') {
+
+    mostrarEstado(
+        'var(--verde)',
+        '✅ ACCESO PERMITIDO',
+        `Alumno: ${nombre}`
+    );
+
+    cartel.innerHTML = `
+        <h2>✅ ACCESO PERMITIDO</h2>
+
+        <p>
+            Alumno:
+            <strong>
+                ${escapeHTML(nombre)}
+            </strong>
+        </p>
+
+        <div class="sufijo-offline">
+            ${
+                fuente === 'Supabase'
+                ? '☁️ Verificado en línea'
+                : '⚠️ Verificado con copia local'
+            }
+        </div>
+    `;
+
+    agregarHistorial(
+        nombre,
+        'Acceso permitido',
+        true
+    );
+
+    return;
+}
+
+
+// ==========================================
+// FUERA DE HORARIO
+// ==========================================
+
+if (estado === 'FUERA_DE_HORARIO') {
+
+    mostrarEstado(
+        'var(--naranja)',
+        '⏰ ACCESO DENEGADO',
+        `${nombre} · Fuera de horario`
+    );
+
+    agregarHistorial(
+        nombre,
+        'Fuera de horario',
+        false
+    );
+
+    return;
+}
+
+
+// ==========================================
+// ALERTA MÉDICA
+// ==========================================
+
+if (estado.includes('ALERTA')) {
+
+    mostrarEstado(
+        'var(--rojo)',
+        '🚨 ACCESO DENEGADO',
+        `${nombre} · Alerta médica`
+    );
+
+    agregarHistorial(
+        nombre,
+        'Alerta médica',
+        false
+    );
+
+    return;
+}
+
+
+// ==========================================
+// PENDIENTE
+// ==========================================
+
+if (estado === 'PENDIENTE') {
+
+    mostrarEstado(
+        'var(--naranja)',
+        '⚠️ ACCESO DENEGADO',
+        `${nombre} · Dictamen pendiente`
+    );
+
+    agregarHistorial(
+        nombre,
+        'Dictamen pendiente',
+        false
+    );
+
+    return;
+}
+
+
+// ==========================================
+// CUALQUIER OTRO ESTADO
+// ==========================================
+
+mostrarEstado(
+    'var(--rojo)',
+    '❌ ACCESO DENEGADO',
+    `${nombre} · Estado no autorizado`
+);
+
+agregarHistorial(
+    nombre,
+    `Estado: ${estado}`,
+    false
+);
+}
+
+
+
+/* =====================================================
+   HISTORIAL
+===================================================== */
+
+function agregarHistorial(
+    nombre,
+    motivo,
+    permitido
+) {
+
+    historial.unshift({
+
+        nombre,
+
+        motivo,
+
+        permitido,
+
+        hora:
+            new Date()
+            .toLocaleTimeString(
+                'es-MX'
+            )
+
+    });
+
+
+    /*
+       SOLO GUARDAMOS LOS ÚLTIMOS 10
+    */
+
+    historial =
+        historial.slice(0, 10);
+
+
+    renderHistorial();
+
+}
+
+
+function renderHistorial() {
+
+    if (
+        historial.length === 0
+    ) {
+
+        listaHistorial.innerHTML = `
+
+            <p style="color:#718096;font-size:13px;">
+                No hay accesos registrados
+                en esta sesión.
+            </p>
+
+        `;
+
+        return;
+
+    }
+
+
+    listaHistorial.innerHTML =
+        historial.map(item => `
+
+            <div class="
+                historial-item
+                ${item.permitido
+                    ? 'permitido'
+                    : 'denegado'}
+            ">
+
+                <div>
+
+                    <div class="historial-nombre">
+                        ${escapeHTML(
+                            item.nombre
+                        )}
+                    </div>
+
+                    <div class="historial-info">
+                        ${escapeHTML(
+                            item.motivo
+                        )}
+                        ·
+                        ${escapeHTML(
+                            item.hora
+                        )}
+                    </div>
+
+                </div>
+
+                <div class="
+                    badge
+                    ${item.permitido
+                        ? 'verde'
+                        : 'rojo'}
+                ">
+
+                    ${item.permitido
+                        ? 'PERMITIDO'
+                        : 'DENEGADO'}
+
+                </div>
+
+            </div>
+
+        `).join('');
+
+}
+
+
+/* =====================================================
+   BUCLE DEL ESCÁNER
+===================================================== */
+
+function bucleEscaneo() {
+
+    if (
+        video.readyState ===
+        video.HAVE_ENOUGH_DATA
+    ) {
+
+        if (
+            video.videoWidth > 0 &&
+            video.videoHeight > 0
+        ) {
+
+            canvas.width =
+                video.videoWidth;
+
+            canvas.height =
+                video.videoHeight;
+
+
+            ctx.drawImage(
+                video,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+
+            const imageData =
+                ctx.getImageData(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+
+
+            const codigo =
+                jsQR(
+                    imageData.data,
+                    imageData.width,
+                    imageData.height,
+                    {
+                        inversionAttempts:
+                            'attemptBoth'
+                    }
+                );
+
+
+            /*
+               EVITAR LEER EL MISMO QR
+               REPETIDAMENTE
+            */
+
+            if (
+                codigo &&
+                codigo.data &&
+                (
+                    Date.now() -
+                    ultimoEscaneo
+                ) >
+                TIEMPO_ESPERA_MS &&
+                !escaneando
+            ) {
+
+                ultimoEscaneo =
+                    Date.now();
+
+                escaneando = true;
+
+
+                mostrarEstado(
+                    'var(--amarillo)',
+                    '🔎 VALIDANDO QR...',
+                    'Consultando registro de acceso'
+                );
+
+
+                procesarQR(
+                    codigo.data.trim()
+                )
+                .finally(() => {
+
+                    escaneando =
+                        false;
+
+                });
+
+            }
+
+        }
+
+    }
+
+
+    requestAnimationFrame(
+        bucleEscaneo
+    );
+
+}
+
+
+/* =====================================================
+   ARRANQUE
+===================================================== */
+
+(async function() {
+
+    try {
+
+        await iniciarCamara();
+
+        requestAnimationFrame(
+            bucleEscaneo
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+    }
+
+
+    /*
+       SINCRONIZAR PADRÓN
+    */
+
+    sincronizarPadron();
+
+})();
+
+</script>
+
+</body>
+</html>
