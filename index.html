@@ -188,13 +188,13 @@
             <label>Horario Asignado</label>
             <select id="horario">
                 <option value="">Selecciona un horario</option>
-                <option value="09:30 - 11:00">09:30 - 11:00</option>
-                <option value="11:00 - 12:30">11:00 - 12:30</option>
-                <option value="12:30 - 14:00">12:30 - 14:00</option>
-                <option value="14:00 - 15:30">14:00 - 15:30</option>
-                <option value="15:30 - 17:00">15:30 - 17:00</option>
-                <option value="17:00 - 18:30">17:00 - 18:30</option>
-                <option value="18:30 - 19:00 (Cierre)">18:30 - 19:00 (Cierre)</option>
+                <option value="09:30 - 11:00" id="opt-h1">09:30 - 11:00</option>
+                <option value="11:00 - 12:30" id="opt-h2">11:00 - 12:30</option>
+                <option value="12:30 - 14:00" id="opt-h3">12:30 - 14:00</option>
+                <option value="14:00 - 15:30" id="opt-h4">14:00 - 15:30</option>
+                <option value="15:30 - 17:00" id="opt-h5">15:30 - 17:00</option>
+                <option value="17:00 - 18:30" id="opt-h6">17:00 - 18:30</option>
+                <option value="18:30 - 19:00 (Cierre)" id="opt-h7">18:30 - 19:00 (Cierre)</option>
             </select>
         </div>
 
@@ -206,6 +206,30 @@
         <div class="grupo-input">
             <label>Dictamen Médico (.pdf, .jpg)</label>
             <input type="file" id="certificado" accept="application/pdf, image/jpeg, image/png">
+        </div>
+
+        <div style="background:#f8f9fa;border:1px solid #dfe6e9;border-radius:10px;padding:14px;margin:15px 0;font-size:12px;color:#636e72;max-height:140px;overflow-y:auto;">
+            <strong style="color:#682444;">Aviso de Privacidad Simplificado</strong><br><br>
+            PolyGym IPN, con domicilio en ESIME Zacatenco, es responsable del tratamiento de tus datos personales,
+            incluyendo datos sensibles de salud (dictamen médico y notas clínicas) que nos proporcionas voluntariamente
+            para fines de control de acceso al gimnasio y validación de tu aptitud física.<br><br>
+            <u>Datos que recabamos:</u> nombre, boleta, carrera, teléfono de emergencia, fotografía, horario asignado,
+            fotografía de identidad y dictamen médico.<br><br>
+            <u>Finalidad:</u> verificar tu identidad, validar tu estado de salud para el uso del gimnasio, y generar tu
+            credencial de acceso (código QR).<br><br>
+            <u>Protección:</u> tus fotografías y dictamen médico se almacenan de forma privada y solo son accesibles
+            mediante enlaces temporales generados por personal administrativo autorizado. Ningún dato es compartido
+            con terceros ajenos a la administración del gimnasio.<br><br>
+            <u>Derechos ARCO:</u> puedes solicitar Acceso, Rectificación, Cancelación u Oposición al tratamiento de tus
+            datos personales, contactando directamente a la administración de PolyGym IPN.
+        </div>
+
+        <div class="grupo-input" style="display:flex;align-items:flex-start;gap:8px;">
+            <input type="checkbox" id="acepta_aviso" style="width:auto;margin-top:3px;">
+            <label for="acepta_aviso" style="font-weight:normal;font-size:13px;">
+                He leído y acepto el Aviso de Privacidad, y autorizo el tratamiento de mis datos personales
+                y de salud para los fines aquí descritos.
+            </label>
         </div>
 
         <button id="btn-registrar" onclick="procesarRegistro()">✅ Completar Registro</button>
@@ -257,6 +281,35 @@
         // Usaremos un nombre diferente para la instancia y la librería.
         const instanciaSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // --- CUPOS DISPONIBLES POR HORARIO (máximo 25 por horario) ---
+        const MAPA_IDS_HORARIO = {
+            "09:30 - 11:00": "opt-h1",
+            "11:00 - 12:30": "opt-h2",
+            "12:30 - 14:00": "opt-h3",
+            "14:00 - 15:30": "opt-h4",
+            "15:30 - 17:00": "opt-h5",
+            "17:00 - 18:30": "opt-h6",
+            "18:30 - 19:00 (Cierre)": "opt-h7"
+        };
+
+        async function cargarDisponibilidad() {
+            const { data, error } = await instanciaSupabase.rpc('contar_cupos_por_horario');
+            if (error || !data) return;
+            data.forEach(fila => {
+                const idOpcion = MAPA_IDS_HORARIO[fila.horario];
+                if (!idOpcion) return;
+                const opcion = document.getElementById(idOpcion);
+                if (!opcion) return;
+                if (fila.disponibles <= 0) {
+                    opcion.textContent = `${fila.horario} (LLENO)`;
+                    opcion.disabled = true;
+                } else {
+                    opcion.textContent = `${fila.horario} (${fila.disponibles} lugares disponibles)`;
+                }
+            });
+        }
+        cargarDisponibilidad();
+
         // 2. SEGURIDAD DEL QR: la firma ya NO se calcula aquí.
         // Se le pide al servidor (Supabase) que la genere -- el secreto
         // nunca viaja al navegador, así nadie puede verlo ni copiarlo.
@@ -280,6 +333,12 @@
             // Validaciones: Todos los campos deben estar llenos
             if (!boleta || !nombre || !carrera || !numero || !horario || !archivoFoto || !archivoCertificado) {
                 alert("Por favor, completa todos los campos (incluyendo el número de emergencia y horario) y sube tus archivos.");
+                return;
+            }
+
+            // Validación: debe aceptar el Aviso de Privacidad antes de continuar
+            if (!document.getElementById('acepta_aviso').checked) {
+                alert("Debes leer y aceptar el Aviso de Privacidad para poder registrarte.");
                 return;
             }
 
@@ -333,10 +392,15 @@
 
             } catch (error) {
                 console.error("Error detallado:", error);
-                // El error "Cannot read properties of undefined (reading 'from')"
-                // sucede si 'instanciaSupabase' o 'instanciaSupabase.storage' son undefined.
-                // Asegúrate de tener copiado este script completo y de que no hay restos antiguos.
-                alert("Ocurrió un error al subir los datos: " + error.message);
+                if (error.message && error.message.includes('CUPO_LLENO')) {
+                    alert("Este horario ya se llenó (máximo 25 personas). Por favor elige otro horario.");
+                    cargarDisponibilidad(); // refrescar para que se vea actualizado
+                } else {
+                    // El error "Cannot read properties of undefined (reading 'from')"
+                    // sucede si 'instanciaSupabase' o 'instanciaSupabase.storage' son undefined.
+                    // Asegúrate de tener copiado este script completo y de que no hay restos antiguos.
+                    alert("Ocurrió un error al subir los datos: " + error.message);
+                }
                 boton.innerText = "✅ Completar Registro";
                 boton.disabled = false;
             }
