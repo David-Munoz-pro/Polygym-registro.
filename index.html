@@ -164,7 +164,15 @@
         <p class="subtitulo">Registro de Alumnos y Expediente Médico</p>
 
         <div class="grupo-input">
-            <label>Número de Boleta</label>
+            <label>Tipo de usuario</label>
+            <select id="tipo_usuario" onchange="actualizarEtiquetaId()">
+                <option value="ALUMNO">Alumno</option>
+                <option value="DOCENTE">Docente</option>
+            </select>
+        </div>
+
+        <div class="grupo-input">
+            <label id="label-boleta">Número de Boleta</label>
             <input type="text" id="boleta" placeholder="Ej. 2024601234">
         </div>
 
@@ -315,6 +323,19 @@
         }
         cargarDisponibilidad();
 
+        function actualizarEtiquetaId() {
+        const tipo = document.getElementById('tipo_usuario').value;
+        const label = document.getElementById('label-boleta');
+        const input = document.getElementById('boleta');
+        if (tipo === 'DOCENTE') {
+        label.textContent = 'Número de Identificador (Docente)';
+        input.placeholder = 'Ej. 1234567';
+        } else {
+        label.textContent = 'Número de Boleta';
+        input.placeholder = 'Ej. 2024601234';   
+        }
+}
+
         // 2. SEGURIDAD DEL QR: la firma ya NO se calcula aquí.
         // Se le pide al servidor (Supabase) que la genere -- el secreto
         // nunca viaja al navegador, así nadie puede verlo ni copiarlo.
@@ -327,6 +348,7 @@
         // 3. FUNCIÓN PRINCIPAL DE REGISTRO
         async function procesarRegistro() {
             const boleta = document.getElementById('boleta').value.trim();
+            const tipoUsuario = document.getElementById('tipo_usuario').value;
             const nombre = document.getElementById('nombre').value.trim();
             const carrera = document.getElementById('carrera').value.trim();
             const numero = document.getElementById('Numero').value.trim(); // <-- Asegúrate de tener este input en HTML
@@ -380,6 +402,7 @@
                     boleta: boleta,
                     nombre: nombre,
                     carrera: carrera,
+                    tipo_usuario: tipoUsuario,
                     telefono_emergencia: numero,
                     horario: horario,
                     foto_url: nombreFoto,
