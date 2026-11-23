@@ -547,10 +547,18 @@ footer {
         >
         </select>
 
+        <div class="control-camara">
+            <label>🚦 Modo de operación</label>
+            <div style="display:flex; gap:10px;">
+                <button id="btn-modo-entrada" onclick="cambiarModo('ENTRADA')" style="background:var(--verde);">⬅️ ENTRADA</button>
+                <button id="btn-modo-salida" onclick="cambiarModo('SALIDA')" style="background:#94a3b8;">➡️ SALIDA</button>
+            </div>
+        </div>
+
     </div>
 
 
-    <!-- ESCÁNER -->
+    <!-- Escaner -->
 
     <div class="scanner-card">
 
@@ -594,7 +602,7 @@ footer {
         </div>
 
 
-        <!-- BOTONES -->
+        <!-- opciones de botones  -->
 
         <div class="botones">
 
@@ -617,7 +625,7 @@ footer {
     </div>
 
 
-    <!-- HISTORIAL -->
+    <!-- Historial de alumnos ingresados durante el servicio -->
 
     <div class="historial">
 
@@ -646,7 +654,7 @@ footer {
 <script>
 
 /* =====================================================
-   CONFIGURACIÓN SUPABASE
+   Configuracion de supabase 
 ===================================================== */
 
 const SUPABASE_URL =
@@ -663,7 +671,7 @@ const sb =
 
 
 /* =====================================================
-   ELEMENTOS
+   Elementos 
 ===================================================== */
 
 const video =
@@ -712,7 +720,7 @@ const listaHistorial =
 
 
 /* =====================================================
-   CONFIGURACIÓN
+   Configuracion
 ===================================================== */
 
 const CLAVE_CACHE =
@@ -726,7 +734,7 @@ const TIEMPO_ESPERA_MS =
 
 
 /* =====================================================
-   VARIABLES
+   Variables 
 ===================================================== */
 
 let streamActual = null;
@@ -737,10 +745,17 @@ let escaneando = false;
 
 let historial = [];
 
+let modoActual = 'ENTRADA';
+
+function cambiarModo(modo) {
+    modoActual = modo;
+    document.getElementById('btn-modo-entrada').style.background = modo === 'ENTRADA' ? 'var(--verde)' : '#94a3b8';
+    document.getElementById('btn-modo-salida').style.background = modo === 'SALIDA' ? 'var(--verde)' : '#94a3b8';
+}
+
 
 /* =====================================================
-   SEGURIDAD:
-   ESCAPAR TEXTO HTML
+   Nivel de seguridad
 ===================================================== */
 
 function escapeHTML(texto) {
@@ -756,7 +771,7 @@ function escapeHTML(texto) {
 
 
 /* =====================================================
-   CÁMARAS
+   camaras
 ===================================================== */
 
 async function listarCamaras() {
@@ -805,7 +820,7 @@ async function listarCamaras() {
 
 
 /* =====================================================
-   INICIAR CÁMARA
+   iniciar acamra 
 ===================================================== */
 
 async function iniciarCamara(deviceId = null) {
@@ -879,7 +894,7 @@ async function iniciarCamara(deviceId = null) {
 
 
 /* =====================================================
-   CAMBIAR CÁMARA
+cambio de camara
 ===================================================== */
 
 function cambiarCamara(deviceId) {
@@ -892,7 +907,7 @@ function cambiarCamara(deviceId) {
 
 
 /* =====================================================
-   DETENER CÁMARA
+   detener camra 
 ===================================================== */
 
 function detenerCamara() {
@@ -920,7 +935,7 @@ function detenerCamara() {
 
 
 /* =====================================================
-   CACHE LOCAL
+   cache local 
 ===================================================== */
 
 function guardarCache(padron) {
@@ -966,7 +981,7 @@ function cargarCache() {
 
 
 /* =====================================================
-   SINCRONIZAR PADRÓN
+   sincronizacion de el padron
 ===================================================== */
 
 async function sincronizarPadron() {
@@ -1428,11 +1443,22 @@ console.log(
 
 if (estado === 'ACTIVO') {
 
-    mostrarEstado(
-        'var(--verde)',
-        '✅ ACCESO PERMITIDO',
-        `Alumno: ${nombre}`
-    );
+// Registrar el movimiento (entrada o salida) sin bloquear el flujo si falla
+try {
+    await sb.rpc('registrar_movimiento', {
+        boleta_input: qrCompleto.split('|')[0].trim(),
+        nombre_input: nombre,
+        tipo_input: modoActual
+    });
+} catch (e) {
+    console.error('No se pudo registrar el movimiento:', e);
+}
+
+mostrarEstado(
+    'var(--verde)',
+    modoActual === 'ENTRADA' ? '✅ ENTRADA PERMITIDA' : '👋 SALIDA REGISTRADA',
+    `Alumno: ${nombre}`
+);
 
     cartel.innerHTML = `
         <h2>✅ ACCESO PERMITIDO</h2>
