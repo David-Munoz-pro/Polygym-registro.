@@ -168,13 +168,11 @@
     </section>
 
     <section class="seccion" id="seccion-padron">
-      <div id="resumen-cupos" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px;"></div>
       <div class="toolbar">
         <input type="text" id="buscador" placeholder="Buscar por boleta o nombre..." oninput="filtrarAlumnos()">
       </div>
       <table>
-        <thead><tr><th>Boleta</th><th>Nombre</th><th>Carrera</th><th>Horario</th><th>Estado</th><th>Acciones</th></tr></thead>
-        <tbody id="tabla-alumnos"></tbody>
+      <thead><tr><th>Tipo</th><th>Boleta</th><th>Nombre</th><th>Carrera</th><th>Horario</th><th>Estado</th><th>Acciones</th></tr></thead>        <tbody id="tabla-alumnos"></tbody>
       </table>
     </section>
 
@@ -193,6 +191,16 @@
       <table>
         <thead><tr><th>Fecha</th><th>Administrador</th><th>Acción</th><th>Detalle</th></tr></thead>
         <tbody id="tabla-bitacora"></tbody>
+      </table>
+    </section>
+
+    <section class="seccion" id="seccion-accesos">
+      <div class="toolbar">
+        <input type="text" id="buscador-accesos" placeholder="Buscar por boleta o nombre..." oninput="filtrarAccesos()">
+      </div>
+      <table>
+        <thead><tr><th>Fecha y hora</th><th>Boleta</th><th>Nombre</th><th>Movimiento</th></tr></thead>
+        <tbody id="tabla-accesos"></tbody>
       </table>
     </section>
 
@@ -319,7 +327,9 @@
     tabs.innerHTML = `
       <button data-tab="monitor" onclick="cambiarSeccion('monitor')">Monitor de Acceso</button>
       <button data-tab="padron" onclick="cambiarSeccion('padron')">Padrón de alumnos</button>
+      <button data-tab="accesos" onclick="cambiarSeccion('accesos')">Entradas/Salidas</button>
       <button data-tab="revision" onclick="cambiarSeccion('revision')">Revisión Médica</button>
+      <button data-tab="accesos" onclick="cambiarSeccion('accesos')">Entradas/Salidas</button>
       ${esSuper ? `<button data-tab="admins" onclick="cambiarSeccion('admins')">Administradores</button>` : ''}
       ${esSuper ? `<button data-tab="bitacora" onclick="cambiarSeccion('bitacora')">Bitácora</button>` : ''}
     `;
@@ -332,6 +342,7 @@
     if (nombre === 'revision') cargarRevisionMedica();
     if (nombre === 'admins') cargarAdmins();
     if (nombre === 'bitacora') cargarBitacora();
+    if (nombre === 'accesos') cargarRegistrosAcceso();
     if (nombre !== 'monitor' && streamCamaraMonitor) {
       detenerCamaraMonitor();
       document.getElementById('contenedor-camara').style.display = 'none';
@@ -355,20 +366,6 @@
     if (error) { alert('Error al cargar alumnos: ' + error.message); return; }
     alumnosCache = data || [];
     pintarTablaAlumnos(alumnosCache);
-    cargarResumenCupos();
-  }
-
-  async function cargarResumenCupos() {
-    const { data, error } = await sb.rpc('contar_cupos_por_horario');
-    const cont = document.getElementById('resumen-cupos');
-    if (error || !data) { cont.innerHTML = ''; return; }
-    cont.innerHTML = data.map(h => {
-      const lleno = h.disponibles <= 0;
-      const color = lleno ? 'var(--rojo)' : (h.disponibles <= 5 ? 'var(--dorado)' : 'var(--verde, #2ecc71)');
-      return `<span style="background:${color};color:white;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:bold;">
-        ${h.horario}: ${h.ocupados}/25 ${lleno ? '(LLENO)' : ''}
-      </span>`;
-    }).join('');
   }
 
   // ---------- ESCANEO CON CÁMARA (atajo dentro del panel) ----------
@@ -535,7 +532,7 @@
   function pintarTablaAlumnos(lista) {
     const tbody = document.getElementById('tabla-alumnos');
     if (!lista.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="vacio">No hay alumnos que coincidan.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="vacio">No hay alumnos que coincidan.</td></tr>`;
       return;
     }
     const esSuper = miPerfil.rol === 'super_admin';
@@ -543,10 +540,10 @@
       const estadoClase = a.estado === 'ACTIVO' ? 'activo' : (a.estado === 'PENDIENTE' ? 'pendiente' : 'alerta');
       return `
         <tr>
+          <td>${a.tipo_usuario === 'DOCENTE' ? '👨‍🏫 Docente' : '🎓 Alumno'}</td>
           <td>${a.boleta}</td>
           <td>${a.nombre}</td>
           <td>${a.carrera || ''}</td>
-          <td style="font-size:12px;color:var(--sub);">${a.horario || '—'}</td>
           <td><span class="badge ${estadoClase}">${a.estado || ''}</span></td>
           <td class="acciones">
             <button class="btn-editar" onclick="abrirEdicion('${a.boleta}')">Gestionar</button>
@@ -655,6 +652,44 @@
         <td>${b.detalle || ''}</td>
       </tr>`).join('');
   }
+
+  let accesosCache = [];
+
+async function cargarRegistrosAcceso() {
+    const { data, error } = await sb.from('registros_acceso').select('*').order('fecha', { ascending: false }).limit(200);
+    const tbody = document.getElementById('tabla-accesos');
+    if (error) { tbody.innerHTML = `<tr><td colspan="4" class="vacio">Error: ${error.message}</td></tr>`; return; }
+    accesosCache = data || [];
+    pintarTablaAccesos(accesosCache);
+}
+
+function filtrarAccesos() {
+    const q = document.getElementById('buscador-accesos').value.trim().toUpperCase();
+    if (!q) { pintarTablaAccesos(accesosCache); return; }
+    pintarTablaAccesos(accesosCache.filter(r =>
+        String(r.boleta).toUpperCase().includes(q) || String(r.nombre || '').toUpperCase().includes(q)
+    ));
+}
+
+function pintarTablaAccesos(lista) {
+    const tbody = document.getElementById('tabla-accesos');
+    if (!lista.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="vacio">Sin registros de entradas o salidas todavía.</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = lista.map(r => {
+        const esEntrada = r.tipo_movimiento === 'ENTRADA';
+        const badgeColor = esEntrada ? 'activo' : 'alerta';
+        const icono = esEntrada ? '⬅️' : '➡️';
+        return `
+          <tr>
+            <td>${new Date(r.fecha).toLocaleString('es-MX')}</td>
+            <td>${r.boleta}</td>
+            <td>${r.nombre || '—'}</td>
+            <td><span class="badge ${badgeColor}">${icono} ${r.tipo_movimiento}</span></td>
+          </tr>`;
+    }).join('');
+}
 
   (async () => {
     const { data } = await sb.auth.getSession();
